@@ -27,7 +27,7 @@ def mode(bot, event, args):
         #ws logic here.
 
         from websocket import create_connection
-        ws = create_connection("ws://10.10.10.254:7681/root/toasty")
+        ws = create_connection("ws://10.10.10.254:7681/root/ready")
         if(args == 'home' or args == 'here'):
             ws.send('{"MobileInternalIndex":"544","CommandType":"UpdateAlmondMode","Mode":"2","EmailId":"jamen@airlim.com"}')
         if(args == 'away' or args == 'gone'):
@@ -56,7 +56,7 @@ def off(bot, event, args=''):
         try:
             #ws logic here.
             from websocket import create_connection
-            ws = create_connection("ws://10.10.10.254:7681/root/toasty")
+            ws = create_connection("ws://10.10.10.254:7681/root/ready")
             ws.send('{"CommandType":"ActivateScene","MobileInternalIndex":"324","Scenes":{"ID":"7"}}')
             #print "Sent"
             #print "Receiving..."
@@ -79,7 +79,7 @@ def off(bot, event, args=''):
         print("found alias for %s" % existing)
         #ws logic here.
         from websocket import create_connection
-        ws = create_connection("ws://10.10.10.254:7681/root/toasty")
+        ws = create_connection("ws://10.10.10.254:7681/root/ready")
 
         ws.send('{"MobilInternalIndex":"543","CommandType":"UpdateDeviceIndex","ID":"1","Index":"1","Value":"false"}')
         #print "Sent"
@@ -104,14 +104,14 @@ def refresh(bot, event):
 
         #ws logic here.
         from websocket import create_connection
-        ws = create_connection("ws://10.10.10.254:7681/root/toasty")
+        ws = create_connection("ws://10.10.10.254:7681/root/ready")
         result = ws.recv()
         print(result)
         ws.send('{"MobileInternalIndex":"676","CommandType":"DeviceList"}')
         #time.sleep(20)
         result = ws.recv()
         print(result)
-        s['data'] = result.replace('"', "'")
+        s['data'] = json.dumps(result)
         s.close()
         ws.close()
         #response.
@@ -132,22 +132,31 @@ def list(bot, event):
         finally:
             s.close()
 
-        #devicelist = json.loads(data)
-        devicelist = jsonpickle.encode(data)
-        print(devicelist.replace('"', "'"))
-        devicelist = json.loads(devicelist)
-        print(devicelist)
+        devicelist = json.loads(data)
+        response = []
+        for key , value in devicelist['Devices'].items():
+            for subkey , subvalue in value.items():
+                id = "";
+                name = "";
+                for subsubkey, subsubvalue in subvalue.items():
+                    if(subsubkey == "ID"):
+                        id = subsubvalue
+                    if(subsubkey == "Name"):
+                        name = subsubvalue
+                        response.append(name + " - " + id) 
+        yield from bot.coro_send_message(event.conv, _('<br>'.join(response) ))
 
-        for device in devicelist:
-           #now values are dictionary
-           for attribute, value in device.iteritems():
-               print (attribute)
-
-               #deviceparams = json.loads(frozen)
-               #print (key, value)
-               #yield from bot.coro_send_message(event.conv, _("%s : %s") % (key, value))
-               yield from bot.coro_send_message(event.conv, _("%s") % (value))
-
-                #for subsubkey, subsubvalue in subvalue.items():
     except ValueError:
         yield from bot.coro_send_message(event.conv, _("Error"))
+
+
+
+def recursive_iter(obj):
+    if isinstance(obj, dict):
+        for item in obj.values():
+            yield from recursive_iter(item)
+    elif any(isinstance(obj, t) for t in (list, tuple)):
+        for item in obj:
+            yield from recursive_iter(item)
+    else:
+        yield obj
