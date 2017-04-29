@@ -133,30 +133,23 @@ def list(bot, event):
             s.close()
 
         devicelist = json.loads(data)
+        devicelist = json.loads(devicelist)
+        
         response = []
         for key , value in devicelist['Devices'].items():
             for subkey , subvalue in value.items():
                 id = "";
                 name = "";
                 for subsubkey, subsubvalue in subvalue.items():
+                    #the almond can put the id or name first, wait until both are populated for the response.
                     if(subsubkey == "ID"):
                         id = subsubvalue
                     if(subsubkey == "Name"):
                         name = subsubvalue
-                        response.append(name + " - " + id) 
+                    if(name != "" and id != ""):
+                        response.append(name + " - " + id)
+                        continue
         yield from bot.coro_send_message(event.conv, _('<br>'.join(response) ))
 
     except ValueError:
         yield from bot.coro_send_message(event.conv, _("Error"))
-
-
-
-def recursive_iter(obj):
-    if isinstance(obj, dict):
-        for item in obj.values():
-            yield from recursive_iter(item)
-    elif any(isinstance(obj, t) for t in (list, tuple)):
-        for item in obj:
-            yield from recursive_iter(item)
-    else:
-        yield obj
